@@ -1,43 +1,42 @@
+"""Task 10: Find the equilibrium temperature of a solar water tank."""
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import root_scalar
 
+def balance(t):
+    return t - 24 - 12 * np.exp(-t / 18)
 
-def heat_balance(temperature: float | np.ndarray) -> float | np.ndarray:
-    return temperature - 25 - 10 * np.exp(-temperature / 20)
+def fixed_point(t):
+    return 24 + 12 * np.exp(-t / 18)
 
-
-solution = root_scalar(
-    heat_balance,
-    bracket=[20, 40],
-    method="bisect",
-    xtol=1e-10,
-)
-
-
-def fixed_point(temperature: float | np.ndarray) -> float | np.ndarray:
-    return 25 + 10 * np.exp(-temperature / 20)
-
-
-temperature = 30.0
-history = [temperature]
-for _ in range(100):
-    new_temperature = fixed_point(temperature)
-    history.append(new_temperature)
-    if abs(new_temperature - temperature) < 1e-10:
+root = root_scalar(balance, bracket=[20, 40], method="bisect", xtol=1e-10)
+estimate = 30.0
+history = [estimate]
+for _ in range(200):
+    updated = fixed_point(estimate)
+    history.append(updated)
+    if abs(updated - estimate) < 1e-10:
         break
-    temperature = new_temperature
+    estimate = updated
+else:
+    raise RuntimeError("Fixed-point iteration did not converge.")
 
-print(f"Bisection equilibrium temperature: {solution.root:.6f} C")
-print(f"Fixed-point equilibrium temperature: {history[-1]:.6f} C")
-print("Fixed-point iterations:", len(history) - 1)
+print(f"Bisection equilibrium: {root.root:.6f} °C ({root.iterations} iterations)")
+print(f"Fixed-point equilibrium: {history[-1]:.6f} °C ({len(history)-1} iterations)")
+print(f"Difference between methods: {abs(root.root-history[-1]):.3e} °C")
 
-temperatures = np.linspace(20, 40, 300)
-plt.plot(temperatures, heat_balance(temperatures))
-plt.axhline(0, linewidth=0.8)
-plt.axvline(solution.root, linestyle="--")
-plt.xlabel("Temperature (C)")
-plt.ylabel("Heat-balance function")
-plt.title("Equilibrium temperature")
+# Parameter experiment: raise the constant heat input from 24 to 26.
+changed_root = root_scalar(lambda t: t - 26 - 12*np.exp(-t/18),
+                           bracket=[20, 45], method="bisect")
+print(f"Equilibrium with higher heat input: {changed_root.root:.4f} °C")
+grid = np.linspace(18, 45, 300)
+plt.plot(grid, balance(grid), label="Heat-balance function")
+plt.axhline(0, color="black", linewidth=.8)
+plt.axvline(root.root, linestyle="--", label=f"Root = {root.root:.2f} °C")
+plt.xlabel("Tank temperature (°C)")
+plt.ylabel("Net heat balance")
+plt.title("Solar water-tank equilibrium")
+plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()

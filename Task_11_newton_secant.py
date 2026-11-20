@@ -1,28 +1,32 @@
+"""Task 11: Estimate a project's internal rate of return."""
 from scipy.optimize import root_scalar
 
+cash_flows = [-12000, 3500, 4000, 4500, 4000]
 
-cash_flows = [-10000, 3000, 3500, 4000, 2500]
+def npv(rate):
+    if rate <= -1:
+        raise ValueError("Rate must be greater than -1.")
+    return sum(amount / (1 + rate)**year
+               for year, amount in enumerate(cash_flows))
 
+def derivative(rate):
+    return sum(-year * amount / (1 + rate)**(year + 1)
+               for year, amount in enumerate(cash_flows) if year)
 
-def npv(rate: float) -> float:
-    return sum(cf / (1 + rate) ** t for t, cf in enumerate(cash_flows))
+newton = root_scalar(npv, fprime=derivative, x0=.12, method="newton")
+secant = root_scalar(npv, x0=.05, x1=.25, method="secant")
+print(f"Newton-Raphson IRR: {newton.root:.4%}")
+print(f"Secant IRR: {secant.root:.4%}")
+print(f"NPV at estimated IRR: {npv(newton.root):.8f}")
+print(f"Iterations: Newton={newton.iterations}, Secant={secant.iterations}")
 
-
-def d_npv(rate: float) -> float:
-    return sum(
-        -t * cf / (1 + rate) ** (t + 1)
-        for t, cf in enumerate(cash_flows)
-        if t > 0
-    )
-
-
-newton = root_scalar(
-    npv,
-    fprime=d_npv,
-    x0=0.1,
-    method="newton",
-)
-secant = root_scalar(npv, x0=0.05, x1=0.2, method="secant")
-
-print(f"Newton-Raphson rate: {newton.root:.6%}")
-print(f"Secant rate: {secant.root:.6%}")
+# Parameter experiment: increase year-four cash inflow by KSh 500.
+changed = cash_flows.copy()
+changed[-1] += 500
+new_rate = root_scalar(
+    lambda r: sum(cf/(1+r)**t for t, cf in enumerate(changed)),
+    bracket=[0, 1], method="brentq"
+).root
+print(f"IRR after extra KSh 500 in year four: {new_rate:.4%}")
+print("Interpretation: both methods seek the rate that makes the present value "
+      "of inflows equal the initial investment.")

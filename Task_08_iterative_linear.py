@@ -1,68 +1,54 @@
+"""Task 08: Jacobi and Gauss-Seidel methods for heat along a metal bar."""
 import numpy as np
 import matplotlib.pyplot as plt
 
+A = np.array([[4., -1., 0., 0.], [-1., 4., -1., 0.],
+              [0., -1., 4., -1.], [0., 0., -1., 3.]])
+b = np.array([80., 20., 20., 40.])
 
-A = np.array([
-    [2.0, -1.0, 0.0, 0.0, 0.0],
-    [-1.0, 2.0, -1.0, 0.0, 0.0],
-    [0.0, -1.0, 2.0, -1.0, 0.0],
-    [0.0, 0.0, -1.0, 2.0, -1.0],
-    [0.0, 0.0, 0.0, -1.0, 2.0],
-])
-b = np.array([100.0, 0.0, 0.0, 0.0, 20.0])
-
-
-def jacobi(
-    matrix: np.ndarray, values: np.ndarray, tol: float = 1e-8,
-    max_iter: int = 500,
-) -> tuple[np.ndarray, list[float]]:
+def jacobi(matrix, rhs, tolerance=1e-9, max_iter=1000):
     diagonal = np.diag(matrix)
     remainder = matrix - np.diagflat(diagonal)
-    estimate = np.zeros_like(values)
+    x = np.zeros_like(rhs)
     errors = []
     for _ in range(max_iter):
-        new_estimate = (values - remainder @ estimate) / diagonal
-        error = np.linalg.norm(new_estimate - estimate, ord=np.inf)
-        errors.append(error)
-        if error < tol:
-            return new_estimate, errors
-        estimate = new_estimate
-    return estimate, errors
+        updated = (rhs - remainder @ x) / diagonal
+        errors.append(np.linalg.norm(updated - x, ord=np.inf))
+        if errors[-1] < tolerance:
+            return updated, errors
+        x = updated
+    raise RuntimeError("Jacobi method did not converge.")
 
-
-def gauss_seidel(
-    matrix: np.ndarray, values: np.ndarray, tol: float = 1e-8,
-    max_iter: int = 500,
-) -> tuple[np.ndarray, list[float]]:
-    estimate = np.zeros_like(values)
+def gauss_seidel(matrix, rhs, tolerance=1e-9, max_iter=1000):
+    x = np.zeros_like(rhs)
     errors = []
     for _ in range(max_iter):
-        old_estimate = estimate.copy()
-        for i in range(len(values)):
-            estimate[i] = (
-                values[i]
-                - matrix[i, :i] @ estimate[:i]
-                - matrix[i, i + 1:] @ old_estimate[i + 1:]
-            ) / matrix[i, i]
-        error = np.linalg.norm(estimate - old_estimate, ord=np.inf)
-        errors.append(error)
-        if error < tol:
-            return estimate, errors
-    return estimate, errors
+        old = x.copy()
+        for i in range(len(rhs)):
+            x[i] = (rhs[i] - matrix[i, :i] @ x[:i]
+                    - matrix[i, i+1:] @ old[i+1:]) / matrix[i, i]
+        errors.append(np.linalg.norm(x - old, ord=np.inf))
+        if errors[-1] < tolerance:
+            return x, errors
+    raise RuntimeError("Gauss-Seidel method did not converge.")
 
+xj, ej = jacobi(A, b)
+xg, eg = gauss_seidel(A, b)
+xd = np.linalg.solve(A, b)
+print("Estimated internal temperatures (Jacobi):", np.round(xj, 5))
+print("Estimated internal temperatures (Gauss-Seidel):", np.round(xg, 5))
+print("Direct solution:", np.round(xd, 5))
+print(f"Iterations: Jacobi={len(ej)}, Gauss-Seidel={len(eg)}")
 
-x_jacobi, errors_jacobi = jacobi(A, b)
-x_gauss_seidel, errors_gauss_seidel = gauss_seidel(A, b)
-x_exact = np.linalg.solve(A, b)
-
-print("Jacobi temperatures:", x_jacobi)
-print("Gauss-Seidel temperatures:", x_gauss_seidel)
-print("Direct solution:", x_exact)
-plt.semilogy(errors_jacobi, label="Jacobi")
-plt.semilogy(errors_gauss_seidel, label="Gauss-Seidel")
+# Parameter experiment: stricter stopping tolerance.
+strict_solution, strict_errors = gauss_seidel(A, b, tolerance=1e-11)
+print("Iterations at 1e-11 tolerance:", len(strict_errors))
+plt.semilogy(ej, label="Jacobi")
+plt.semilogy(eg, label="Gauss-Seidel")
 plt.xlabel("Iteration")
-plt.ylabel("Maximum change")
-plt.title("Convergence of iterative temperature solution")
+plt.ylabel("Maximum update size")
+plt.title("Convergence of heat-bar iterative methods")
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()

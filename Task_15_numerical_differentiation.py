@@ -1,30 +1,25 @@
+"""Task 15: Estimate a vehicle's speed from GPS position samples."""
 import numpy as np
 import matplotlib.pyplot as plt
 
+time_s = np.array([0, 1, 2, 3, 4, 5, 6], dtype=float)
+distance_m = np.array([0.0, 4.8, 10.2, 16.1, 22.7, 30.0, 38.0])
+# np.gradient uses central differences internally and one-sided endpoints.
+speed_ms = np.gradient(distance_m, time_s)
+speed_kmh = speed_ms * 3.6
 
-time = np.array([0, 1, 2, 3, 4, 5, 6], dtype=float)
-position = np.array([0.0, 4.8, 10.2, 16.1, 22.7, 30.0, 38.0])
-speed = np.zeros_like(position)
-speed[0] = (position[1] - position[0]) / (time[1] - time[0])
+for t, d, v in zip(time_s, distance_m, speed_kmh):
+    print(f"t={t:.0f} s | distance={d:5.1f} m | estimated speed={v:5.1f} km/h")
+print(f"Average trip speed: {distance_m[-1]/time_s[-1]*3.6:.2f} km/h")
+print(f"Maximum estimated speed: {speed_kmh.max():.2f} km/h")
 
-for i in range(1, len(time) - 1):
-    speed[i] = (position[i + 1] - position[i - 1]) / (
-        time[i + 1] - time[i - 1]
-    )
-
-speed[-1] = (position[-1] - position[-2]) / (
-    time[-1] - time[-2]
-)
-
-for current_time, distance, velocity in zip(time, position, speed):
-    print(
-        f"t={current_time:.0f}s, position={distance:.1f}m, "
-        f"estimated speed={velocity:.2f}m/s"
-    )
-
-plt.plot(time, speed, marker="o")
+# Parameter experiment: estimate using every second sample.
+coarse_speed = np.gradient(distance_m[::2], time_s[::2])
+print("Coarser-sampling speed estimates (m/s):", np.round(coarse_speed, 2))
+plt.plot(time_s, speed_kmh, marker="o")
 plt.xlabel("Time (s)")
-plt.ylabel("Estimated speed (m/s)")
-plt.title("Speed estimated from GPS position data")
+plt.ylabel("Estimated speed (km/h)")
+plt.title("Vehicle speed estimated from GPS positions")
 plt.grid(True)
+plt.tight_layout()
 plt.show()

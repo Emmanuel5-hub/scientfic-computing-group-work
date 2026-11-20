@@ -1,34 +1,41 @@
+"""Task 17: Euler approximation of hot tea cooling to room temperature."""
 import numpy as np
 import matplotlib.pyplot as plt
-# Newton's law of cooling:
-# dT/dt = -k(T - T_ambient)
-T_ambient = 25.0
-T_initial = 90.0
-k = 0.12
-h = 1.0 # minutes
-end_time = 30.0
-def cooling_rate(T):
-    return -k * (T - T_ambient)
 
+ambient = 22.0
+initial = 85.0
+cooling_constant = 0.10  # per minute
+step = 1.0
+duration = 30.0
 
-time = np.arange(0, end_time + h, h)
-temperature = np.zeros_like(time)
-temperature[0] = T_initial
-for i in range(len(time) - 1):
-    temperature[i + 1] = (
-        temperature[i] + h * cooling_rate(temperature[i])
-    )
+def rate(temp):
+    return -cooling_constant * (temp - ambient)
 
-exact = T_ambient + (T_initial - T_ambient) * np.exp(-k * time)
+time = np.arange(0, duration + step, step)
+euler = np.zeros_like(time)
+euler[0] = initial
+for i in range(len(time)-1):
+    euler[i+1] = euler[i] + step * rate(euler[i])
 
-print(f"Euler temperature after 30 min: {temperature[-1]:.2f} C")
-print(f"Exact temperature after 30 min: {exact[-1]:.2f} C")
-print(f"Final absolute error: {abs(temperature[-1]-exact[-1]):.4f} C")
-plt.plot(time, temperature, marker="o", label="Euler")
+exact = ambient + (initial-ambient)*np.exp(-cooling_constant*time)
+print(f"Euler estimate after 30 min: {euler[-1]:.3f} °C")
+print(f"Exact value after 30 min: {exact[-1]:.3f} °C")
+print(f"Absolute error: {abs(euler[-1]-exact[-1]):.4f} °C")
+
+# Parameter experiment: halve the time step.
+fine_time = np.arange(0, duration + step/2, step/2)
+fine = np.zeros_like(fine_time)
+fine[0] = initial
+for i in range(len(fine_time)-1):
+    fine[i+1] = fine[i] + (step/2)*rate(fine[i])
+print(f"Error with 0.5-minute step: {abs(fine[-1]-exact[-1]):.4f} °C")
+
+plt.plot(time, euler, "o-", markevery=3, label="Euler, 1-minute step")
 plt.plot(time, exact, label="Exact solution")
 plt.xlabel("Time (minutes)")
-plt.ylabel("Temperature (C)")
-plt.title("Cooling of a hot object")
+plt.ylabel("Tea temperature (°C)")
+plt.title("Cooling of tea in a room")
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()

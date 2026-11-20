@@ -1,39 +1,41 @@
+"""Task 18: Simulate the charging of a phone-sized RC circuit."""
 import numpy as np
-from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
-# RC charging circuit:
-# dV/dt = (Vs - V)/(R*C)
-Vs = 5.0 # supply voltage (V)
-R = 1000.0 # resistance (ohms)
-C = 0.001 # capacitance (farads)
-V0 = 0.0 # initial capacitor voltage
-def rc_circuit(t, V):
-    return [(Vs - V[0]) / (R * C)]
+from scipy.integrate import solve_ivp
 
+supply_v = 5.0
+resistance_ohm = 1500.0
+capacitance_f = 0.001
+initial_v = 0.0
+time_points = np.linspace(0, 8, 250)
 
-t_eval = np.linspace(0, 5, 200)
-solution = solve_ivp(
-rc_circuit,
-(0, 5),
-[V0],
-t_eval=t_eval,
-rtol=1e-9,
-atol=1e-11
-)
+def circuit_ode(t, voltage):
+    return [(supply_v-voltage[0])/(resistance_ohm*capacitance_f)]
 
-# Exact RC charging curve for validation
-exact = Vs * (1 - np.exp(-solution.t / (R * C)))
-print("Solver success:", solution.success)
-print(f"Capacitor voltage at 5 s: {solution.y[0, -1]:.4f} V")
-print(
-    f"Maximum error against exact solution: "
-    f"{np.max(np.abs(solution.y[0] - exact)):.3e} V"
-)
-plt.plot(solution.t, solution.y[0], label="solve_ivp")
-plt.plot(solution.t, exact, linestyle="--", label="Exact")
+solution = solve_ivp(circuit_ode, (0, 8), [initial_v], t_eval=time_points,
+                     rtol=1e-8, atol=1e-10)
+if not solution.success:
+    raise RuntimeError(solution.message)
+
+exact = supply_v*(1-np.exp(-solution.t/(resistance_ohm*capacitance_f)))
+print("Solver successful:", solution.success)
+print(f"Voltage at 8 seconds: {solution.y[0, -1]:.4f} V")
+print(f"Maximum error versus exact solution: "
+      f"{np.max(np.abs(solution.y[0]-exact)):.3e} V")
+
+# Parameter experiment: double the capacitance, doubling the time constant.
+larger_c = 2*capacitance_f
+slower = supply_v*(1-np.exp(-solution.t/(resistance_ohm*larger_c)))
+print(f"Voltage at 1 second with doubled capacitance: "
+      f"{slower[np.argmin(abs(solution.t-1))]:.3f} V")
+
+plt.plot(solution.t, solution.y[0], label="SciPy solve_ivp")
+plt.plot(solution.t, exact, "--", label="Analytical solution")
+plt.plot(solution.t, slower, ":", label="Doubled capacitance")
 plt.xlabel("Time (s)")
 plt.ylabel("Capacitor voltage (V)")
-plt.title("RC circuit charging")
+plt.title("RC circuit charging response")
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()
